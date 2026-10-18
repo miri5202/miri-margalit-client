@@ -17,6 +17,14 @@ npm run dev
 הלקוח עולה על `http://localhost:5173` (זו הכתובת שהשרת מאשר ב-CORS), ופונה ישירות לשרת.
 אם השרת רץ בכתובת אחרת: להעתיק את `.env.example` ל-`.env` ולעדכן את `VITE_API_URL`.
 
+## בנייה לאתר המפורסם
+
+```bash
+npm run build:site
+```
+
+הפקודה בונה את הלקוח לתיקייה `dist` כך שהוא פונה לאותה כתובת שממנה נטען. את תוכן `dist` מעתיקים לתיקייה `WorkshopHub.API/wwwroot` בשרת, והשרת מגיש את הלקוח וה-API מאותה כתובת.
+
 ## המסכים
 
 1. **התחברות והרשמה** (`src/pages/AuthPage.jsx`) – ה-JWT נשמר ב-localStorage ונשלח ב-header‏ `Authorization: Bearer` בכל בקשה (`src/api.js`).

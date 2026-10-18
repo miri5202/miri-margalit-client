@@ -1,7 +1,9 @@
 // שכבת התקשורת עם השרת: שומרת את ה-JWT, שולחת אותו ב-header של כל בקשה,
 // ומתרגמת כל תשובת שגיאה של השרת לאובייקט ApiError אחד.
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5080';
+// בפיתוח: השרת המקומי. באתר המפורסם (npm run build:site) הלקוח מוגש מהשרת עצמו, ולכן פונים לאותה כתובת.
+const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.MODE === 'site' ? '' : 'http://localhost:5080');
+const API_BASE = API_URL || window.location.origin;
 const STORAGE_KEY = 'workshophub.auth';
 
 /**
@@ -55,7 +57,7 @@ export function setUnauthorizedHandler(handler) {
 // ---------- בקשה כללית ----------
 
 async function request(method, path, { query, body } = {}) {
-  const url = new URL(path, API_URL);
+  const url = new URL(path, API_BASE);
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined && value !== null && value !== '' && value !== false) {
       url.searchParams.set(key, value);
@@ -82,7 +84,7 @@ async function request(method, path, { query, body } = {}) {
   } catch {
     throw new ApiError(0, {
       code: 'network_error',
-      message: `אין תקשורת עם השרת (${API_URL}). ודאי שהוא רץ.`,
+      message: `אין תקשורת עם השרת (${API_BASE}). ודאי שהוא רץ.`,
     });
   }
 
