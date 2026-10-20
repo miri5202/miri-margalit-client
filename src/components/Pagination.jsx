@@ -2,18 +2,18 @@
 // הלקוח מחזיק רק את העמוד הנוכחי, לא את כל הרשימה.
 export default function Pagination({ page, totalPages, totalCount, onChange }) {
   if (!totalPages || totalPages <= 1) {
-    return totalCount > 0 ? <p className="muted pager">סה"כ {totalCount}</p> : null;
+    return totalCount > 0 ? <p className="muted pager">{totalCount} בסך הכול</p> : null;
   }
 
   return (
     <div className="pager">
-      <button onClick={() => onChange(page - 1)} disabled={page <= 1}>
+      <button className="ghost small" onClick={() => onChange(page - 1)} disabled={page <= 1}>
         הקודם
       </button>
       <span>
-        עמוד {page} מתוך {totalPages} · סה"כ {totalCount}
+        עמוד {page} מתוך {totalPages} ({totalCount} בסך הכול)
       </span>
-      <button onClick={() => onChange(page + 1)} disabled={page >= totalPages}>
+      <button className="ghost small" onClick={() => onChange(page + 1)} disabled={page >= totalPages}>
         הבא
       </button>
     </div>

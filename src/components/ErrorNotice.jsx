@@ -10,13 +10,22 @@ export default function ErrorNotice({ error, children }) {
   if (error.isConflict) {
     return (
       <div className="banner banner-conflict" role="alert">
-        <strong>{CONFLICT_TITLES[error.code] ?? 'הפעולה לא בוצעה'}</strong>
-        <p>{error.message}</p>
-        {children}
-        <small className="muted">
-          קוד: {error.code} · סטטוס 409
-          {error.correlationId && <> · מזהה בקשה: <span dir="ltr">{error.correlationId}</span></>}
-        </small>
+        <span className="conflict-badge" aria-hidden="true">
+          409
+        </span>
+        <div className="conflict-content">
+          <strong>{CONFLICT_TITLES[error.code] ?? 'הפעולה לא בוצעה'}</strong>
+          <p>{error.message}</p>
+          {children && <div className="conflict-actions">{children}</div>}
+          <small className="muted">
+            קוד השגיאה: {error.code}
+            {error.correlationId && (
+              <>
+                {', '}מזהה בקשה: <span dir="ltr">{error.correlationId}</span>
+              </>
+            )}
+          </small>
+        </div>
       </div>
     );
   }

@@ -2,11 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 import ErrorNotice from '../components/ErrorNotice.jsx';
 import Pagination from '../components/Pagination.jsx';
+import HeroFan from '../components/HeroFan.jsx';
+import { WorkshopArt } from '../components/Illustrations.jsx';
+import { DateStub, SeatDots } from '../components/Ticket.jsx';
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 6;
 
-const formatDate = (isoUtc) =>
-  new Date(isoUtc).toLocaleString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+const seatsText = (session) =>
+  session.isFull
+    ? `מלא – ${session.capacity} מתוך ${session.capacity}`
+    : session.seatsLeft === 1
+      ? `נשאר מקום אחרון מתוך ${session.capacity}`
+      : `נשארו ${session.seatsLeft} מקומות מתוך ${session.capacity}`;
+
+const seatsTone = (session) => (session.isFull ? 'full' : session.seatsLeft === 1 ? 'last' : 'open');
 
 // מסכים 2-4: רשימת המפגשים עם pagination מול השרת, כפתור הפעולה על המשאב המוגבל (הרשמה),
 // והצגה ברורה של המקרה שבו השרת מחזיר 409.
@@ -22,6 +31,7 @@ export default function SessionsPage({ user }) {
   const [capacityEdit, setCapacityEdit] = useState(null); // { session, value } – המפגש שהמנהלת עורכת כרגע
 
   const isAdmin = user.role === 'Admin';
+  const firstName = user.fullName.split(' ')[0];
 
   // הרשימה נטענת מהשרת בכל שינוי של עמוד או סינון. השרת מחזיר רק את העמוד המבוקש ואת הספירה הכוללת.
   const load = useCallback(async () => {
@@ -96,127 +106,172 @@ export default function SessionsPage({ user }) {
     result?.items.find((session) => session.id === actionError.sessionId);
 
   return (
-    <section>
-      <h1>מפגשים קרובים</h1>
+    <>
+      <section className="hero">
+        <div className="hero-text">
+          <p className="hero-greeting">שלום, {firstName}</p>
+          <h1>שומרים לך מקום.</h1>
+          <p className="hero-lead">
+            בכל סדנה יש מספר מקומות קבוע. נרשמים בלחיצה אחת, ואם המפגש מלא – נכנסים לרשימת ההמתנה, והמקום הראשון
+            שמתפנה נשמר לך אוטומטית.
+          </p>
+          <ul className="legend" aria-label="מקרא">
+            <li>
+              <span className="seat seat-taken" /> מקום תפוס
+            </li>
+            <li>
+              <span className="seat" /> מקום פנוי
+            </li>
+            <li>
+              <span className="seat seat-mine" /> המקום שלך
+            </li>
+          </ul>
+        </div>
+        <HeroFan />
+      </section>
 
-      <div className="filters">
-        <input
-          placeholder="חיפוש לפי סדנה או מנחה"
-          value={filters.search}
-          onChange={(e) => changeFilter({ search: e.target.value })}
-        />
-        <select value={filters.categoryId} onChange={(e) => changeFilter({ categoryId: e.target.value })}>
-          <option value="">כל הקטגוריות</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        <label className="inline">
+      <section className="toolbar" aria-label="סינון מפגשים">
+        <label className="search">
+          <span className="visually-hidden">חיפוש</span>
+          <input
+            type="search"
+            placeholder="חיפוש לפי סדנה או מנחה"
+            value={filters.search}
+            onChange={(e) => changeFilter({ search: e.target.value })}
+          />
+        </label>
+        <label>
+          <span className="visually-hidden">קטגוריה</span>
+          <select value={filters.categoryId} onChange={(e) => changeFilter({ categoryId: e.target.value })}>
+            <option value="">כל הקטגוריות</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="toggle">
           <input
             type="checkbox"
             checked={filters.onlyAvailable}
             onChange={(e) => changeFilter({ onlyAvailable: e.target.checked })}
           />
-          רק מפגשים עם מקום פנוי
+          רק עם מקום פנוי
         </label>
+      </section>
+
+      <div className="messages" aria-live="polite">
+        {message && <p className="banner banner-success">{message}</p>}
+
+        {/* המקרה החשוב: השרת החזיר 409. מציגים מה קרה, והרשימה שמתחת כבר נטענה מחדש עם המצב העדכני. */}
+        <ErrorNotice error={actionError?.error}>
+          {conflictSession && conflictSession.isFull && !conflictSession.myRegistrationId && (
+            <button className="primary" onClick={() => register(conflictSession, true)}>
+              להצטרף לרשימת ההמתנה
+            </button>
+          )}
+          {conflictSession && !conflictSession.isFull && !conflictSession.myRegistrationId && (
+            <button className="primary" onClick={() => register(conflictSession, false)}>
+              עדיין יש מקום – לנסות שוב
+            </button>
+          )}
+        </ErrorNotice>
+
+        <ErrorNotice error={loadError} />
       </div>
 
-      {message && <p className="banner banner-success">{message}</p>}
+      {!result && !loadError && <p className="empty">טוענים את המפגשים…</p>}
+      {result && result.items.length === 0 && (
+        <p className="empty">אין מפגשים שמתאימים לחיפוש. אפשר לנקות את הסינון ולנסות שוב.</p>
+      )}
 
-      {/* המקרה החשוב: השרת החזיר 409. מציגים מה קרה, והרשימה שמתחת כבר נטענה מחדש עם המצב העדכני. */}
-      <ErrorNotice error={actionError?.error}>
-        {conflictSession && conflictSession.isFull && !conflictSession.myRegistrationId && (
-          <button className="primary" onClick={() => register(conflictSession, true)}>
-            להצטרף לרשימת ההמתנה
-          </button>
-        )}
-        {conflictSession && !conflictSession.isFull && !conflictSession.myRegistrationId && (
-          <button className="primary" onClick={() => register(conflictSession, false)}>
-            עדיין יש מקום – לנסות שוב
-          </button>
-        )}
-      </ErrorNotice>
+      <ul className="tickets">
+        {result?.items.map((session) => {
+          const tone = seatsTone(session);
+          const isMineConfirmed = session.myRegistrationStatus === 'Confirmed';
 
-      <ErrorNotice error={loadError} />
+          return (
+            <li key={session.id} className={`ticket ticket-${tone}`}>
+              <DateStub isoUtc={session.startsAtUtc} />
 
-      {!result && !loadError && <p className="muted">טוען…</p>}
-      {result && result.items.length === 0 && <p className="muted">לא נמצאו מפגשים.</p>}
+              <div className="ticket-body">
+                <div className="ticket-art">
+                  <WorkshopArt title={session.workshopTitle} category={session.categoryName} />
+                </div>
+                <div className="ticket-head">
+                  <span className="category">{session.categoryName}</span>
+                  {isMineConfirmed && <span className="stamp stamp-ok">את רשומה</span>}
+                  {session.myRegistrationStatus === 'Waitlisted' && <span className="stamp stamp-wait">בהמתנה</span>}
+                </div>
 
-      <ul className="list">
-        {result?.items.map((session) => (
-          <li key={session.id} className="card">
-            <div className="card-main">
-              <h2>{session.workshopTitle}</h2>
-              <p className="muted">
-                {session.instructorName} · {session.categoryName}
-              </p>
-              <p>
-                {formatDate(session.startsAtUtc)} · {session.durationMinutes} דקות · {session.location}
-              </p>
-              <p className={session.isFull ? 'seats full' : session.seatsLeft === 1 ? 'seats last' : 'seats'}>
-                {session.isFull
-                  ? `מלא (${session.capacity} מתוך ${session.capacity})`
-                  : session.seatsLeft === 1
-                    ? `נשאר מקום אחרון (מתוך ${session.capacity})`
-                    : `נשארו ${session.seatsLeft} מקומות מתוך ${session.capacity}`}
-                {session.waitlistCount > 0 && ` · ${session.waitlistCount} ברשימת ההמתנה`}
-              </p>
-            </div>
+                <h2>{session.workshopTitle}</h2>
+                <p className="meta">
+                  בהנחיית {session.instructorName}
+                  <br />
+                  {session.location}, {session.durationMinutes} דקות
+                </p>
 
-            <div className="card-actions">
-              {session.myRegistrationStatus === 'Confirmed' && <span className="chip chip-ok">את רשומה</span>}
-              {session.myRegistrationStatus === 'Waitlisted' && <span className="chip chip-wait">את ברשימת ההמתנה</span>}
+                <SeatDots capacity={session.capacity} taken={session.seatsTaken ?? session.capacity - session.seatsLeft} mine={isMineConfirmed} />
+                <p className={`seats-text seats-${tone}`}>
+                  {seatsText(session)}
+                  {session.waitlistCount > 0 && <span className="waitlist">, {session.waitlistCount} ברשימת ההמתנה</span>}
+                </p>
 
-              {session.myRegistrationId ? (
-                <button onClick={() => cancel(session)} disabled={busySessionId === session.id}>
-                  ביטול ההרשמה
-                </button>
-              ) : session.isFull ? (
-                <button onClick={() => register(session, true)} disabled={busySessionId === session.id}>
-                  הצטרפות לרשימת ההמתנה
-                </button>
-              ) : (
-                <button className="primary" onClick={() => register(session, false)} disabled={busySessionId === session.id}>
-                  הרשמה
-                </button>
-              )}
+                <div className="ticket-actions">
+                  {session.myRegistrationId ? (
+                    <button className="ghost" onClick={() => cancel(session)} disabled={busySessionId === session.id}>
+                      ביטול ההרשמה
+                    </button>
+                  ) : session.isFull ? (
+                    <button className="secondary" onClick={() => register(session, true)} disabled={busySessionId === session.id}>
+                      הצטרפות לרשימת ההמתנה
+                    </button>
+                  ) : (
+                    <button className="primary" onClick={() => register(session, false)} disabled={busySessionId === session.id}>
+                      {busySessionId === session.id ? 'שומרים…' : 'הרשמה'}
+                    </button>
+                  )}
 
-              {/* הכפתור מוסתר ממי שאינה מנהלת – אבל ההגנה האמיתית היא בשרת: PUT בלי תפקיד Admin מחזיר 403 */}
-              {isAdmin && capacityEdit?.session.id !== session.id && (
-                <button
-                  className="link"
-                  onClick={() => setCapacityEdit({ session, value: String(session.capacity) })}
-                  disabled={busySessionId === session.id}
-                >
-                  שינוי מספר המקומות
-                </button>
-              )}
-              {isAdmin && capacityEdit?.session.id === session.id && (
-                <form className="capacity-form" onSubmit={saveCapacity}>
-                  <input
-                    type="number"
-                    min="1"
-                    max="500"
-                    aria-label="מספר המקומות"
-                    value={capacityEdit.value}
-                    onChange={(e) => setCapacityEdit({ ...capacityEdit, value: e.target.value })}
-                  />
-                  <button className="primary">שמירה</button>
-                  <button type="button" onClick={() => setCapacityEdit(null)}>
-                    ביטול
-                  </button>
-                </form>
-              )}
-            </div>
-          </li>
-        ))}
+                  {/* הכפתור מוסתר ממי שאינה מנהלת – אבל ההגנה האמיתית היא בשרת: PUT בלי תפקיד Admin מחזיר 403 */}
+                  {isAdmin && capacityEdit?.session.id !== session.id && (
+                    <button
+                      className="link"
+                      onClick={() => setCapacityEdit({ session, value: String(session.capacity) })}
+                      disabled={busySessionId === session.id}
+                    >
+                      שינוי מספר המקומות
+                    </button>
+                  )}
+                </div>
+
+                {isAdmin && capacityEdit?.session.id === session.id && (
+                  <form className="capacity-form" onSubmit={saveCapacity}>
+                    <label>
+                      מספר מקומות
+                      <input
+                        type="number"
+                        min="1"
+                        max="500"
+                        value={capacityEdit.value}
+                        onChange={(e) => setCapacityEdit({ ...capacityEdit, value: e.target.value })}
+                      />
+                    </label>
+                    <button className="primary small">שמירה</button>
+                    <button type="button" className="ghost small" onClick={() => setCapacityEdit(null)}>
+                      ביטול
+                    </button>
+                  </form>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       {result && (
         <Pagination page={result.page} totalPages={result.totalPages} totalCount={result.totalCount} onChange={setPage} />
       )}
-    </section>
+    </>
   );
 }
