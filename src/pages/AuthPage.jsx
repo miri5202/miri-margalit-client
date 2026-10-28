@@ -3,8 +3,9 @@ import { api } from '../api.js';
 import ErrorNotice from '../components/ErrorNotice.jsx';
 import HeroFan from '../components/HeroFan.jsx';
 
-// משתמשי הדמו מה-README – כדי שאפשר יהיה לנסות את המערכת בלי להקליד
-const DEMO_USERS = [
+// משתמשי הדמו – רק בהרצה מקומית (npm run dev). בבנייה לאתר המפורסם import.meta.env.DEV הוא false,
+// הרשימה ריקה והכפתורים לא נכללים בכלל. באתר עצמו חשבונות הדמו נעולים בשרת.
+const DEMO_USERS = !import.meta.env.DEV ? [] : [
   { label: 'משתתפת לדוגמה', email: 'rachel@workshophub.local', password: 'Member#2026!' },
   { label: 'מנהלת לדוגמה', email: 'admin@workshophub.local', password: 'Admin#2026!' },
 ];
@@ -119,7 +120,7 @@ export default function AuthPage({ onLoggedIn }) {
           </button>
         </form>
 
-        {!isRegister && (
+        {!isRegister && DEMO_USERS.length > 0 && (
           <div className="demo">
             <p>לנסות בלי להירשם:</p>
             <div className="demo-buttons">
