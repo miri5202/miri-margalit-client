@@ -16,6 +16,7 @@ export default function AuthPage({ onLoggedIn }) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -101,15 +102,32 @@ export default function AuthPage({ onLoggedIn }) {
           </label>
           <label>
             סיסמה
-            <input
-              type="password"
-              dir="ltr"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={isRegister ? 8 : undefined}
-              autoComplete={isRegister ? 'new-password' : 'current-password'}
-            />
+            <span className="password-field">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                dir="ltr"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={isRegister ? 8 : undefined}
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
+              />
+              {/* "העין": מחליפה את סוג השדה בין password ל-text, כדי לבדוק את הסיסמה לפני השליחה */}
+              <button
+                type="button"
+                className="eye"
+                onClick={() => setShowPassword((shown) => !shown)}
+                aria-label={showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
+                aria-pressed={showPassword}
+                title={showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                  {showPassword && <line x1="3" y1="3" x2="21" y2="21" />}
+                </svg>
+              </button>
+            </span>
             {isRegister && <span className="hint">לפחות 8 תווים</span>}
           </label>
 
